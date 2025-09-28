@@ -1,0 +1,77 @@
+package com.webdev.ws.service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.stereotype.Component;
+
+import com.webdev.ws.dto.OrdersDTO;
+import com.webdev.ws.enums.OrderStatus;
+import com.webdev.ws.events.OrderCreatedEvent;
+import com.webdev.ws.model.OrdersEntity;
+import com.webdev.ws.repository.OrdersRepository;
+
+@Component
+public class OrderServiceImpl implements OrderService{
+
+	private OrdersRepository ordersRepository;
+	
+	private final Logger LOGGER = LoggerFactory.getLogger(OrderServiceImpl.class);
+	
+	@Autowired
+	private KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+	
+	private String eventName ;
+	
+	public OrderServiceImpl(OrdersRepository ordersRepository, KafkaTemplate<String,OrderCreatedEvent>kafkaTemplate
+			,@Value("${order.created.topic.name}")String eventName)
+	{
+		this.ordersRepository = ordersRepository;
+		this.kafkaTemplate = kafkaTemplate;
+		this.eventName = eventName;
+	}
+	
+	@Override
+	public OrdersDTO createOrder(OrdersDTO ordersDTO) {
+		
+		// TODO Auto-generated method stub
+		//save order in Dto 
+		LOGGER.info("Order Recieved"+ordersDTO);
+		
+		OrdersEntity entity = new OrdersEntity();
+		BeanUtils.copyProperties(ordersDTO, entity);
+		entity.setOrderStatus(OrderStatus.CREATED);
+		ordersRepository.save(entity);
+		
+		//Before sending event map order to Order created event dto 
+		//Set header and message key
+		OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent();
+		BeanUtils.copyProperties(entity, orderCreatedEvent);
+		//To set headers we have to use producer record 
+		ProducerRecord<String, OrderCreatedEvent> producerRecord = new ProducerRecord(eventName,orderCreatedEvent.getOrderId().toString(),orderCreatedEvent);
+		producerRecord.headers().add("ID",UUID.randomUUID().toString().getBytes());
+		
+		LOGGER.info("Header added with id and random UUID");
+		
+		try {
+			SendResult<String, OrderCreatedEvent> result =kafkaTemplate.send(producerRecord).get();
+		} catch (InterruptedException | ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			LOGGER.error(e.getMessage()+""+LocalDateTime.now()+"/orders");
+		}
+		LOGGER.info("Event sent with info"+orderCreatedEvent);
+			
+		return ordersDTO;
+	}
+
+}
