@@ -21,6 +21,7 @@ public class OrdersEntity implements Serializable{
 
 	@Id
 	@GeneratedValue
+	private long id;
 	private  UUID orderId;
 	private UUID productId;
 	private Integer quantity;

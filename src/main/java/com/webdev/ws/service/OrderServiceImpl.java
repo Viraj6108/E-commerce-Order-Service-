@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import com.webdev.ws.dto.OrdersDTO;
 import com.webdev.ws.enums.OrderStatus;
+import com.webdev.ws.errors.GlobalErrors;
 import com.webdev.ws.events.OrderCreatedEvent;
 import com.webdev.ws.model.OrdersEntity;
 import com.webdev.ws.repository.OrdersRepository;
@@ -40,14 +41,20 @@ public class OrderServiceImpl implements OrderService{
 		this.eventName = eventName;
 	}
 	
+	
+	/**
+	 * @param ordersDTO
+	 * @implNote create new order save in DB and produce event with order data
+	 */
 	@Override
-	public OrdersDTO createOrder(OrdersDTO ordersDTO) {
+	public OrdersEntity createOrder(OrdersDTO ordersDTO) {
 		
 		// TODO Auto-generated method stub
 		//save order in Dto 
 		LOGGER.info("Order Recieved"+ordersDTO);
 		
 		OrdersEntity entity = new OrdersEntity();
+		entity.setOrderId(UUID.randomUUID());
 		BeanUtils.copyProperties(ordersDTO, entity);
 		entity.setOrderStatus(OrderStatus.CREATED);
 		ordersRepository.save(entity);
@@ -64,6 +71,9 @@ public class OrderServiceImpl implements OrderService{
 		
 		try {
 			SendResult<String, OrderCreatedEvent> result =kafkaTemplate.send(producerRecord).get();
+			LOGGER.info("Partition "+ result.getRecordMetadata().partition());
+			LOGGER.info("Replica"+ result.getRecordMetadata().serializedKeySize());
+
 		} catch (InterruptedException | ExecutionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -71,7 +81,29 @@ public class OrderServiceImpl implements OrderService{
 		}
 		LOGGER.info("Event sent with info"+orderCreatedEvent);
 			
-		return ordersDTO;
+		return entity;
+	}
+
+	
+	/**
+	 * @param orderId
+	 * @apiNote get order using order id 
+	 */
+	@Override
+	public OrdersEntity getOrder(UUID orderId) {
+		OrdersEntity entity = new OrdersEntity();
+		try {
+		 entity = ordersRepository.findByOrderId(orderId);
+		if(entity.equals(null))
+		{
+			throw new GlobalErrors("Order not found "+entity.getOrderId());
+		}
+		}catch(Exception e)
+		{
+			LOGGER.error("Error occured while processing request: "+e.getMessage());
+		}
+		
+		return entity;
 	}
 
 }
