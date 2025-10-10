@@ -18,7 +18,6 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
 import com.webdev.ws.events.OrderCreatedEvent;
-import com.webdev.ws.model.OrdersEntity;
 
 @Configuration
 public class KafkaConfiguration {
