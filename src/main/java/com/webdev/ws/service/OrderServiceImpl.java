@@ -29,11 +29,11 @@ public class OrderServiceImpl implements OrderService{
 	private final Logger LOGGER = LoggerFactory.getLogger(OrderServiceImpl.class);
 	
 	@Autowired
-	private KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+	private KafkaTemplate<String, Object> kafkaTemplate;
 	
 	private String eventName ;
 	
-	public OrderServiceImpl(OrdersRepository ordersRepository, KafkaTemplate<String,OrderCreatedEvent>kafkaTemplate
+	public OrderServiceImpl(OrdersRepository ordersRepository, KafkaTemplate<String,Object>kafkaTemplate
 			,@Value("${order.created.topic.name}")String eventName)
 	{
 		this.ordersRepository = ordersRepository;
@@ -64,13 +64,13 @@ public class OrderServiceImpl implements OrderService{
 		OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent();
 		BeanUtils.copyProperties(entity, orderCreatedEvent);
 		//To set headers we have to use producer record 
-		ProducerRecord<String, OrderCreatedEvent> producerRecord = new ProducerRecord(eventName,orderCreatedEvent.getOrderId().toString(),orderCreatedEvent);
+		ProducerRecord<String, Object> producerRecord = new ProducerRecord(eventName,orderCreatedEvent.getOrderId().toString(),orderCreatedEvent);
 		producerRecord.headers().add("ID",UUID.randomUUID().toString().getBytes());
 		
 		LOGGER.info("Header added with id and random UUID");
 		
 		try {
-			SendResult<String, OrderCreatedEvent> result =kafkaTemplate.send(producerRecord).get();
+			SendResult<String, Object> result =kafkaTemplate.send(producerRecord).get();
 			LOGGER.info("Partition "+ result.getRecordMetadata().partition());
 			LOGGER.info("Replica"+ result.getRecordMetadata().serializedKeySize());
 
