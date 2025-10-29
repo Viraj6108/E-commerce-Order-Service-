@@ -93,11 +93,8 @@ public class OrderServiceImpl implements OrderService{
 	public OrdersEntity getOrder(UUID orderId) {
 		OrdersEntity entity = new OrdersEntity();
 		try {
-		 entity = ordersRepository.findByOrderId(orderId);
-		if(entity.equals(null))
-		{
-			throw new GlobalErrors("Order not found "+entity.getOrderId());
-		}
+		 entity = ordersRepository.findByOrderId(orderId).orElseThrow(()->new GlobalErrors("Order not found with orderId"+orderId));
+		
 		}catch(Exception e)
 		{
 			LOGGER.error("Error occured while processing request: "+e.getMessage());

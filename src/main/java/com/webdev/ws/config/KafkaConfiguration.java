@@ -84,7 +84,41 @@ public class KafkaConfiguration {
 	
 	//Consumer configuration
 	
+	@Bean
+	ConsumerFactory<String, Object> consumerFactory() {
+		Map<String, Object> config = new HashMap<>();
+		config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, env.getProperty("spring.kafka.consumer.bootstrap-servers"));
+		config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+		config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+		config.put(JsonDeserializer.TRUSTED_PACKAGES,
+				env.getProperty("spring.kafka.consumer.properties.spring.json.trusted-packages"));
+		config.put(ConsumerConfig.GROUP_ID_CONFIG, env.getProperty("consumer.group.id"));
+		config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, env.getProperty("spring.kafka.consumer.auto-offset-reset"));
+		config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+
+		return new DefaultKafkaConsumerFactory<>(config);
+	}
+
+	// Configuration for DLT
+
 	
+	@Bean
+	ConcurrentKafkaListenerContainerFactory<String, Object> concurrentKafkaListenerContainerFactory(
+			KafkaTemplate<String, Object> kafkaTemplate, ConsumerFactory<String, Object> consumerFactory) {
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
+		FixedBackOff back = new FixedBackOff(5000L, 3);
+		DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, back);
+		handler.addNotRetryableExceptions(NotRetryableException.class);
+		handler.addRetryableExceptions(RetryableException.class);
+		ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		factory.setCommonErrorHandler(handler);
+		factory.setConsumerFactory(consumerFactory);
+		return factory;
+
+	}
+	 
+	 
 	
 	
 	
