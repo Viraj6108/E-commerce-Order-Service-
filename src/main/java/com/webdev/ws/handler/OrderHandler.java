@@ -59,6 +59,8 @@ public class OrderHandler {
 			throw new RetryableException("Retrying 3 times");
 		}
 	}
+	
+	
 
 	@KafkaHandler(isDefault = true)
 	public void defaulthandler(Object object) {
