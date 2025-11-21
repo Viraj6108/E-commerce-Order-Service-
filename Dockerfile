@@ -1,5 +1,5 @@
 FROM cgr.dev/chainguard/jdk
 WORKDIR /app
 COPY target/Order-Service-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8081
+EXPOSE 8001
 ENTRYPOINT ["java", "-jar", "app.jar"]
